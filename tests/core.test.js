@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { createProject, validateProject } from '../src/project/project.js';
+import { createProject, validateProject, LIMITS } from '../src/project/project.js';
 import { createFile, createDirectory, normalizePath, removeEntry, renameEntry } from '../src/filesystem/fileSystem.js';
 import { fromTemplate } from '../src/templates/templates.js';
 import { WebExecutionProvider } from '../src/execution/executionService.js';
@@ -74,11 +74,20 @@ test('validates imported project structure', () => {
   assert.throws(() => validateProject({ ...p, files: [{ ...p.files[0] }, { ...p.files[0] }] }));
 });
 
+test('enforces project resource limits', () => {
+  const p = createProject();
+  createFile(p, 'large.txt', 'x'.repeat(LIMITS.maxFileBytes + 1));
+  assert.throws(() => validateProject(p), /size limit/);
+});
+
 test('settings retain defaults', () => assert.equal(mergeSettings({ fontSize: 18 }).fontSize, 18));
 
 test('editor lifecycle guards remain enabled', async () => {
   const source = await readFile(new URL('../src/app/main.js', import.meta.url), 'utf8');
   assert.match(source, /shortcutsBound/);
-  assert.match(source, /save\(\{rerender:false\}\)/);
+  assert.match(source, /scheduleAutoSave\(project\)/);
+  assert.match(source, /save\(targetProject, \{ rerender: project\.id === targetId \}\)/);
   assert.match(source, /--tab-size/);
+  assert.match(source, /data-project-id/);
+  assert.match(source, /id="terminalToggle"/);
 });

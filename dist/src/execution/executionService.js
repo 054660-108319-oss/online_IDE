@@ -18,6 +18,8 @@ function resolvePath(basePath, requestedPath) {
   return base.join('/');
 }
 
+const MAX_PREVIEW_BYTES = 2 * 1024 * 1024;
+
 export class WebExecutionProvider {
   async run(project, onLine) {
     const start = performance.now();
@@ -56,6 +58,9 @@ export class WebExecutionProvider {
       },
     );
 
+    if (new TextEncoder().encode(bundled).byteLength > MAX_PREVIEW_BYTES) {
+      throw Error('Preview exceeds the 2 MB size limit.');
+    }
     return bundled;
   }
 }
